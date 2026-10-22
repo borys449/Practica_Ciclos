@@ -1,7 +1,0 @@
-app:
-  env: Development
-  name: Mi-Aplicacion
-  host: http://localhost:8080   # URL donde corre tu aplicación
-  # openApiConf: swagger.json    # Opcional: ruta a tu especificación OpenAPI/Swagger
-hawk:
-  # token: ${HAWK_API_KEY}      # Se recomienda usar variables de entorno para el token
