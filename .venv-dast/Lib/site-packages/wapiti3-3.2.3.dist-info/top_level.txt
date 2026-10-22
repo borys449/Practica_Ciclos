@@ -1,0 +1,8 @@
+bin
+dist
+doc
+endpoint
+myvenv
+myvenv312
+sessions
+wapitiCore
