@@ -1,20 +1,37 @@
 from flask import Flask, request, render_template_string
-import json
+import logging
 import os
-import sqlite3   # Code Smell: Importación no utilizada
-import hashlib   # Code Smell: Otra importación no utilizada
 
 app = Flask(__name__)
 
-# Security Hotspot / Code Smell: Credencial hardcodeada en texto plano
-ADMIN_TOKEN = "super_secret_admin_token_999"
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Se lee desde el entorno. Este ejemplo no usa el token en ninguna ruta.
+ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN")
+
+
+@app.after_request
+def agregar_cabeceras_seguridad(response):
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "style-src 'self' https://cdn.jsdelivr.net; "
+        "object-src 'none'; "
+        "frame-ancestors 'none'; "
+        "base-uri 'self'"
+    )
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    return response
+
 
 BASE_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Librería con Alertas para Sonar</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Librería de Pruebas</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
@@ -27,14 +44,41 @@ BASE_TEMPLATE = """
 </html>
 """
 
-@app.route('/')
+LIBROS = {
+    "quijote": {
+        "title": "Don Quijote de la Mancha",
+        "author": "Miguel de Cervantes",
+        "desc": "Una de las obras más destacadas de la literatura española y universal."
+    },
+    "cien_anos": {
+        "title": "Cien años de soledad",
+        "author": "Gabriel García Márquez",
+        "desc": "La novela fundamental del realismo mágico latinoamericano."
+    },
+    "principito": {
+        "title": "El Principito",
+        "author": "Antoine de Saint-Exupéry",
+        "desc": "Un cuento poético y filosófico sobre la vida y la amistad."
+    },
+    "metamorfosis": {
+        "title": "La metamorfosis",
+        "author": "Franz Kafka",
+        "desc": "Una obra maestra de la literatura del absurdo y la incomunicación."
+    },
+    "libro_extra": {
+        "title": "Libro Extra de Prueba",
+        "author": "Autor Anónimo",
+        "desc": "Un libro ficticio añadido para completar el catálogo de prueba."
+    }
+}
+
+
+@app.route("/")
 def home():
-    # Code Smell: Uso de print() en lugar del módulo logging
-    print("DEBUG: Acceso detectado a la página principal de la librería.")
-    
+    logger.info("Acceso a la página principal de la librería.")
     content = """
-        <h1 class="text-primary mb-3">📖 Librería de Pruebas SonarQube</h1>
-        <p class="text-muted">Selecciona un libro para ver su contenido estático:</p>
+        <h1 class="text-primary mb-3">📖 Librería de Pruebas</h1>
+        <p class="text-muted">Selecciona un libro para ver su información:</p>
         <ul class="list-group mb-3">
             <li class="list-group-item"><a href="/book?title=quijote">Ver El Quijote</a></li>
             <li class="list-group-item"><a href="/book?title=cien_anos">Ver Cien años de soledad</a></li>
@@ -45,81 +89,31 @@ def home():
     """
     return render_template_string(BASE_TEMPLATE, content=content)
 
-@app.route('/book')
-def view_book():
-    # Code Smell: Uso de print() repetido
-    print("DEBUG: Procesando solicitud de visualización de libro...")
-    book_title = request.args.get('title', 'default')
-    
-    # 🚨 ALERTA DE SONAR: Complejidad Cognitiva alta y Código Duplicado masivo
-    if book_title == "quijote":
-        title = "Don Quijote de la Mancha"
-        author = "Miguel de Cervantes"
-        desc = "Una de las obras más destacadas de la literatura española y universal."
-        content = f"""
-            <h2 class="text-success">{title}</h2>
-            <h5 class="text-secondary">Autor: {author}</h5>
-            <p class="mt-3">{desc}</p>
-            <a href="/" class="btn btn-secondary mt-3">Volver al inicio</a>
-        """
-        return render_template_string(BASE_TEMPLATE, content=content)
-        
-    elif book_title == "cien_anos":
-        title = "Cien años de soledad"
-        author = "Gabriel García Márquez"
-        desc = "La novela fundamental del realismo mágico latinoamericano."
-        content = f"""
-            <h2 class="text-success">{title}</h2>
-            <h5 class="text-secondary">Autor: {author}</h5>
-            <p class="mt-3">{desc}</p>
-            <a href="/" class="btn btn-secondary mt-3">Volver al inicio</a>
-        """
-        return render_template_string(BASE_TEMPLATE, content=content)
-        
-    elif book_title == "principito":
-        title = "El Principito"
-        author = "Antoine de Saint-Exupéry"
-        desc = "Un cuento poético y filosófico sobre la vida y la amistad."
-        content = f"""
-            <h2 class="text-success">{title}</h2>
-            <h5 class="text-secondary">Autor: {author}</h5>
-            <p class="mt-3">{desc}</p>
-            <a href="/" class="btn btn-secondary mt-3">Volver al inicio</a>
-        """
-        return render_template_string(BASE_TEMPLATE, content=content)
-        
-    elif book_title == "metamorfosis":
-        title = "La metamorfosis"
-        author = "Franz Kafka"
-        desc = "Una obra maestra de la literatura del absurdo y la incomunicación."
-        content = f"""
-            <h2 class="text-success">{title}</h2>
-            <h5 class="text-secondary">Autor: {author}</h5>
-            <p class="mt-3">{desc}</p>
-            <a href="/" class="btn btn-secondary mt-3">Volver al inicio</a>
-        """
-        return render_template_string(BASE_TEMPLATE, content=content)
-        
-    elif book_title == "libro_extra":
-        title = "Libro Extra de Prueba"
-        author = "Autor Anónimo"
-        desc = "Un libro ficticio añadido únicamente para inflar el código duplicado."
-        content = f"""
-            <h2 class="text-success">{title}</h2>
-            <h5 class="text-secondary">Autor: {author}</h5>
-            <p class="mt-3">{desc}</p>
-            <a href="/" class="btn btn-secondary mt-3">Volver al inicio</a>
-        """
-        return render_template_string(BASE_TEMPLATE, content=content)
-        
-    else:
-        error_content = """
-            <h2 class="text-danger">¡Libro no encontrado!</h2>
-            <p class="text-muted">El libro que buscas no existe en este catálogo rígido.</p>
-            <a href="/" class="btn btn-secondary mt-3">Volver al inicio</a>
-        """
-        return render_template_string(BASE_TEMPLATE, content=error_content)
 
-if __name__ == '__main__':
-    # Security Hotspot: Servidor Flask en modo debug activo para producción
-    app.run(debug=True, host='0.0.0.0', port=5000)
+@app.route("/book")
+def view_book():
+    logger.info("Solicitud para consultar un libro.")
+    book_key = request.args.get("title", "default")
+    book = LIBROS.get(book_key)
+
+    if book is None:
+        content = """
+            <h2 class="text-danger">¡Libro no encontrado!</h2>
+            <p class="text-muted">El libro que buscas no existe en este catálogo.</p>
+            <a href="/" class="btn btn-secondary mt-3">Volver al inicio</a>
+        """
+    else:
+        # Los datos interpolados vienen del catálogo fijo del servidor.
+        content = f"""
+            <h2 class="text-success">{book["title"]}</h2>
+            <h5 class="text-secondary">Autor: {book["author"]}</h5>
+            <p class="mt-3">{book["desc"]}</p>
+            <a href="/" class="btn btn-secondary mt-3">Volver al inicio</a>
+        """
+
+    return render_template_string(BASE_TEMPLATE, content=content)
+
+
+if __name__ == "__main__":
+    # Solo para desarrollo local; no usar el servidor de desarrollo en producción.
+    app.run(debug=False, host="127.0.0.1", port=5000)
